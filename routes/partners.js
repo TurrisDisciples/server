@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 
 var Partner  = require('../db/partner');
+var User  = require('../db/user');
 var Travel  = require('../db/travel');
 var c = require('../c');
 
@@ -20,6 +21,11 @@ router.post('/', function(req, res, next) {
 
   var partner = new Partner();
   partner.email = jsonData.email;
+  partner.nombre = jsonData.nombre;
+  partner.apellido = jsonData.apellido;
+  partner.direccion = jsonData.direccion;
+  partner.cbu = jsonData.cbu;
+  partner.telefono = jsonData.telefono;
 
   partner.save(function(err, partnerCreated) {
     if (err)res.send(err);
@@ -38,9 +44,10 @@ router.post('/travel', function(req, res, next) {
     state: c.travel.state.next,
     origin: jsonData.origin,
     destiny: jsonData.destiny,
-    capMax: jsonData.capacity,
+    capMax: jsonData.capMax,
     capCurrent: 0,
-    date: jsonData.date
+    date: jsonData.date,
+    registers: []
   });
 
   travel.save(function(err, travelCreated) {
@@ -60,11 +67,72 @@ router.get('/myTravels', function(req, res, next) {
         {email: req.query.email},
         {userType: c.userType.partner}
       ]
-    },function(err, travels) {
+    }).populate({
+      path: 'registers', model: 'Register', populate:
+      {
+        path: 'userId', model: 'User'
+      }
+    }).exec(function(err, travels) {
       if (err)res.send(err);
       else res.json(travels);
     });
   }
 });
+
+//EL CAMIONERO CREA UN VIAJE SUGERIDO (EN REALIDAD LO MODIFICA)
+router.put('/travel', function(req, res, next) {
+  jsonData = req.body.data;
+  console.log(jsonData);
+
+  Travel.findOne({'_id':jsonData._id}).populate({
+    path: 'registers', model: 'Register', populate:
+    {
+      path: 'userId', model: 'User'
+    }
+  }).exec(function(err, travel) {
+    if (err)res.send(err);
+    else{
+      travel.email = jsonData.email;
+      travel.capMax = jsonData.capMax;
+      travel.userType = c.userType.partner;
+      travel.state = c.travel.state.next;
+
+      travel.save(function(err) {
+        if (err)res.send(err);
+        else{
+          User.findOne({_id: travel.registers[0].userId._id},function(err, user) {
+            if (err)res.send(err);
+            else{
+              user.travels.push(travel._id);
+              user.save(function(err, travelCreated) {
+                if (err)res.send(err);
+                else res.json({ message: 'Travel created!' });
+              });
+            }
+          });
+        }
+      });
+    }
+  });
+});
+
+//PARA OBTENER TODOS LOS VIAJES SUGERIDOS
+router.get('/suggestedTravels', function(req, res, next) {
+    Travel.find(
+      { $and:[
+        {state: c.travel.state.suggested},
+        {userType: c.userType.user}
+      ]
+    }).populate({
+      path: 'registers', model: 'Register', populate:
+      {
+        path: 'userId', model: 'User'
+      }
+    }).exec(function(err, travels) {
+      if (err)res.send(err);
+      else res.json(travels);
+    });
+});
+
 
 module.exports = router;

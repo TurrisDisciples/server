@@ -9,7 +9,8 @@ var TravelSchema   = new Schema({
     destiny: String,
     capMax: Number,
     capCurrent: Number,
-    date: Date
+    date: Date,
+    registers: [{type: mongoose.Schema.Types.ObjectId, ref: 'Register'}]
 });
 
 module.exports = mongoose.model('Travel', TravelSchema);
