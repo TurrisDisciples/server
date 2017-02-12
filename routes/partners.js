@@ -14,6 +14,19 @@ router.get('/', function(req, res, next) {
   });
 });
 
+//PARA OBTENER UN CAMIONERO ESPECIFICO
+router.get('/partner', function(req, res, next) {
+	if(req.query.email === undefined) res.send("ERROR: WRONG PARAMETERS");
+	else{
+		console.log("email: "+req.query.email);
+
+		Partner.findOne({'email':req.query.email},function(err, partner) {
+			if (err)res.send(err);
+			else res.json(partner);
+		});
+	}
+});
+
 //PARA CREAR CAMIONERO
 router.post('/', function(req, res, next) {
   jsonData = req.body.data;
